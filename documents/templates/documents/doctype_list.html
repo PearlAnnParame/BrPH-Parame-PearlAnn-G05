@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Document Types{% endblock %}
+{% block content %}
+<div class="card"><h1>Document Types</h1><a class="btn" href="{% url 'doctype_create' %}">+ Add document type</a></div>
+{% for t in types %}
+<div class="card">
+  <h2>{{ t.name }} <span class="badge">&#8369;{{ t.fee }}</span> {% if not t.is_active %}<span class="st st-rejected">Inactive</span>{% endif %}</h2>
+  <p>{{ t.description }}</p>
+  <p class="muted"><strong>Requirements:</strong>
+    {% for req in t.requirements.all %}{{ req.name }}{% if not req.is_mandatory %} (optional){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %}</p>
+  <a class="btn" href="{% url 'doctype_edit' t.pk %}">Edit</a>
+  <form method="post" action="{% url 'doctype_delete' t.pk %}" style="display:inline" onsubmit="return confirm('Delete this document type?')">{% csrf_token %}<button class="btn danger" type="submit">Delete</button></form>
+</div>
+{% empty %}<div class="card"><p class="muted">No document types yet.</p></div>{% endfor %}
+{% endblock %}

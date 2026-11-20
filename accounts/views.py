@@ -7,6 +7,8 @@ from django.views.decorators.http import require_POST
 
 from .decorators import role_required
 from .forms import ProfileForm, RegistrationForm
+from documents.models import DocumentRequest
+
 from .models import User
 
 
@@ -57,12 +59,26 @@ def dashboard(request):
 
 @role_required(User.Role.RESIDENT)
 def resident_dashboard(request):
-    return render(request, "accounts/resident_dashboard.html")
+    mine = DocumentRequest.objects.filter(resident=request.user).select_related("document_type")
+    context = {
+        "total": mine.count(),
+        "pending": mine.filter(status=DocumentRequest.Status.PENDING).count(),
+        "ready": mine.filter(status=DocumentRequest.Status.READY).count(),
+        "recent": mine[:5],
+    }
+    return render(request, "accounts/resident_dashboard.html", context)
 
 
 @role_required(User.Role.ADMIN)
 def admin_dashboard(request):
-    context = {"resident_count": User.objects.filter(role=User.Role.RESIDENT).count()}
+    all_requests = DocumentRequest.objects.select_related("resident", "document_type")
+    context = {
+        "resident_count": User.objects.filter(role=User.Role.RESIDENT).count(),
+        "total": all_requests.count(),
+        "pending": all_requests.filter(status=DocumentRequest.Status.PENDING).count(),
+        "under_review": all_requests.filter(status=DocumentRequest.Status.UNDER_REVIEW).count(),
+        "recent": all_requests.filter(status=DocumentRequest.Status.PENDING)[:5],
+    }
     return render(request, "accounts/admin_dashboard.html", context)
 
 

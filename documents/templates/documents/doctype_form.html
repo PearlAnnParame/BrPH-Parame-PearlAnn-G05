@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{% if obj %}Edit{% else %}Add{% endif %} Document Type{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{% if obj %}Edit {{ obj.name }}{% else %}Add Document Type{% endif %}</h1>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% if field.name == "is_active" %}<label><input type="checkbox" name="is_active" id="{{ field.id_for_label }}" {% if field.value %}checked{% endif %}> Active (available to residents)</label>{{ field.errors }}
+      {% else %}{% include "documents/_field.html" with field=field %}{% endif %}
+    {% endfor %}
+    <h2 style="margin-top:1.5rem">Requirements</h2>
+    {{ formset.management_form }}
+    {{ formset.non_form_errors }}
+    {% for f in formset %}
+      <div class="card" style="background:#f9fafb">
+        {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+        {{ f.non_field_errors }}
+        {% for field in f.visible_fields %}
+          {% if field.name == "is_mandatory" %}<label><input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" {% if field.value %}checked{% endif %}> Mandatory</label>
+          {% elif field.name == "DELETE" %}<label><input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}"> Remove this requirement</label>
+          {% else %}{% include "documents/_field.html" with field=field %}{% endif %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+    <p class="muted">Save, then edit again to add more than two new requirements at once.</p>
+    <button class="btn" type="submit">Save</button>
+    <a class="btn secondary" href="{% url 'doctype_list' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}
