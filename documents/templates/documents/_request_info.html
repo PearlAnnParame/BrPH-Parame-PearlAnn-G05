@@ -1,0 +1,12 @@
+<dl>
+  <dt>Reference no.</dt><dd><strong>{{ r.reference_no }}</strong></dd>
+  <dt>Document</dt><dd>{{ r.document_type.name }}</dd>
+  <dt>Status</dt><dd><span class="st st-{{ r.status }}">{{ r.get_status_display }}</span></dd>
+  <dt>Purpose</dt><dd>{{ r.purpose }}</dd>
+  <dt>Copies</dt><dd>{{ r.copies }}</dd>
+  <dt>Fee</dt><dd>&#8369;{{ r.document_type.fee }} per copy</dd>
+  <dt>Preferred pickup</dt><dd>{{ r.preferred_pickup_date|date:"F j, Y" }}</dd>
+  <dt>Resident remarks</dt><dd>{{ r.remarks|default:"—" }}</dd>
+  <dt>Barangay remarks</dt><dd>{{ r.admin_remarks|default:"—" }}</dd>
+  <dt>Submitted</dt><dd>{{ r.created_at|date:"F j, Y g:i A" }}</dd>
+</dl>

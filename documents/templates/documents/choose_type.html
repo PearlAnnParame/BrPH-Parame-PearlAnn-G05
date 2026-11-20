@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}New Request{% endblock %}
+{% block content %}
+<div class="card"><h1>Request a Document</h1><p class="muted">Choose the document you need.</p></div>
+{% for t in types %}
+<div class="card">
+  <h2>{{ t.name }} <span class="badge">&#8369;{{ t.fee }}</span></h2>
+  <p>{{ t.description }}</p>
+  {% if t.requirements.all %}
+    <p class="muted"><strong>Requirements:</strong>
+    {% for req in t.requirements.all %}{{ req.name }}{% if not req.is_mandatory %} (optional){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  <a class="btn" href="{% url 'request_create' t.pk %}">Request this document</a>
+</div>
+{% empty %}<div class="card"><p class="muted">No document types are available right now.</p></div>{% endfor %}
+{% endblock %}
