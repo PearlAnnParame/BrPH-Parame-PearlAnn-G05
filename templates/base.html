@@ -16,7 +16,7 @@
     nav form { margin:0; }
     .linkbtn { background:none; border:0; color:#fff; cursor:pointer; font:inherit; padding:0; }
     .linkbtn:hover { text-decoration:underline; }
-    main { max-width:760px; margin:2rem auto; padding:0 1rem; }
+    main { max-width:960px; margin:2rem auto; padding:0 1rem; }
     .card { background:#fff; border-radius:10px; padding:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,.1); margin-bottom:1rem; }
     h1,h2 { margin-top:0; }
     label { display:block; font-weight:600; margin:.8rem 0 .25rem; }
@@ -35,6 +35,17 @@
     dl { display:grid; grid-template-columns:150px 1fr; gap:.5rem 1rem; }
     dt { font-weight:600; } dd { margin:0; }
     .badge { background:#e0e7ff; color:#3730a3; padding:.15rem .6rem; border-radius:99px; font-size:.8rem; }
+    input[type=checkbox] { width:auto; margin-right:.4rem; }
+    select { width:100%; padding:.6rem; border:1px solid #d1d5db; border-radius:6px; font:inherit; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { text-align:left; padding:.6rem .5rem; border-bottom:1px solid #e5e7eb; }
+    .btn.danger { background:#b91c1c; }
+    .st { padding:.15rem .6rem; border-radius:99px; font-size:.8rem; font-weight:600; background:#e5e7eb; }
+    .st-pending { background:#fef3c7; color:#92400e; } .st-under_review { background:#dbeafe; color:#1e40af; }
+    .st-approved { background:#dcfce7; color:#166534; } .st-ready { background:#ccfbf1; color:#115e59; }
+    .st-released { background:#e0e7ff; color:#3730a3; } .st-rejected { background:#fee2e2; color:#991b1b; }
+    .st-cancelled { background:#e5e7eb; color:#374151; }
+    .stat { font-size:2rem; font-weight:700; margin:0; }
   </style>
 </head>
 <body>
@@ -42,9 +53,13 @@
   <a class="brand" href="{% url 'home' %}">BrPH</a>
   {% if user.is_authenticated %}
     {% if user.is_barangay_admin %}
-      <a href="{% url 'admin_dashboard' %}">Admin Dashboard</a>
+      <a href="{% url 'admin_dashboard' %}">Dashboard</a>
+      <a href="{% url 'admin_request_list' %}">Requests</a>
+      <a href="{% url 'doctype_list' %}">Document Types</a>
     {% else %}
-      <a href="{% url 'resident_dashboard' %}">My Dashboard</a>
+      <a href="{% url 'resident_dashboard' %}">Dashboard</a>
+      <a href="{% url 'choose_type' %}">New Request</a>
+      <a href="{% url 'request_list' %}">My Requests</a>
     {% endif %}
     <a href="{% url 'profile' %}">Profile</a>
     <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="linkbtn" type="submit">Logout</button></form>

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{% if editing %}Edit{% else %}New{% endif %} Request{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{% if editing %}Edit Request {{ r.reference_no }}{% else %}Request: {{ doc_type.name }}{% endif %}</h1>
+  <p class="muted">Fee: &#8369;{{ doc_type.fee }} per copy</p>
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% include "documents/_field.html" with field=form.purpose %}
+    {% include "documents/_field.html" with field=form.copies %}
+    {% include "documents/_field.html" with field=form.preferred_pickup_date %}
+    {% include "documents/_field.html" with field=form.remarks %}
+    {% if form.file_fields %}<h2 style="margin-top:1.5rem">Required Documents</h2>{% endif %}
+    {% for req, field, existing in form.file_fields %}
+      {% include "documents/_field.html" with field=field %}
+      {% if existing %}<div class="helptext">Current file: <a href="{{ existing.file.url }}" target="_blank">view</a> (upload a new one to replace it)</div>{% endif %}
+    {% endfor %}
+    <button class="btn" type="submit">{% if editing %}Save changes{% else %}Submit request{% endif %}</button>
+    <a class="btn secondary" href="{% if editing %}{% url 'request_detail' r.pk %}{% else %}{% url 'choose_type' %}{% endif %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}
