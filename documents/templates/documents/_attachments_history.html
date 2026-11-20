@@ -1,0 +1,14 @@
+<div class="card">
+  <h2>Uploaded Requirements</h2>
+  {% for a in r.attachments.all %}
+    <p><strong>{{ a.requirement.name|default:"Attachment" }}:</strong> <a href="{{ a.file.url }}" target="_blank">View file</a></p>
+  {% empty %}<p class="muted">No files uploaded.</p>{% endfor %}
+</div>
+<div class="card">
+  <h2>Status History</h2>
+  {% for h in r.history.all %}
+    <p><span class="muted">{{ h.changed_at|date:"M j, Y g:i A" }}</span> &mdash;
+      {% if h.old_status and h.old_status != h.new_status %}{{ h.old_status }} &rarr; {% endif %}<strong>{{ h.new_status }}</strong>
+      {% if h.remarks %}<br><span class="muted">{{ h.remarks }}</span>{% endif %}</p>
+  {% endfor %}
+</div>
