@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Barangay Admin Dashboard</h1>
+  <p class="muted">Welcome, {{ user.first_name|default:user.username }} <span class="badge">{{ user.get_role_display }}</span></p>
+</div>
+<div class="grid">
+  <div class="card"><h2>{{ resident_count }}</h2><p class="muted">Registered residents</p></div>
+  <div class="card"><h2>Manage Requests</h2><p class="muted">Review, verify and update request statuses.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
+  <div class="card"><h2>Document Types</h2><p class="muted">Manage document types and requirements.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
+  <div class="card"><h2>Reports</h2><p class="muted">Summary reports per document type and month.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
+</div>
+{% endblock %}

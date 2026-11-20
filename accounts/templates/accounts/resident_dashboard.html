@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Resident Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Hello, {{ user.first_name|default:user.username }}!</h1>
+  <p class="muted">Resident Dashboard <span class="badge">{{ user.get_role_display }}</span></p>
+</div>
+<div class="grid">
+  <div class="card"><h2>Request a Document</h2><p class="muted">Barangay Clearance, Certificate of Residency, Certificate of Indigency.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
+  <div class="card"><h2>My Requests</h2><p class="muted">Track the status and history of your requests.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
+  <div class="card"><h2>My Profile</h2><p class="muted">View and update your details.</p><a class="btn" href="{% url 'profile' %}">Open Profile</a></div>
+</div>
+{% endblock %}
