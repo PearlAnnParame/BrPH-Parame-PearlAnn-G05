@@ -4,11 +4,22 @@
 <div class="card">
   <h1>Barangay Admin Dashboard</h1>
   <p class="muted">Welcome, {{ user.first_name|default:user.username }} <span class="badge">{{ user.get_role_display }}</span></p>
+  <a class="btn" href="{% url 'admin_request_list' %}">Manage requests</a>
+  <a class="btn secondary" href="{% url 'doctype_list' %}">Document types</a>
 </div>
 <div class="grid">
-  <div class="card"><h2>{{ resident_count }}</h2><p class="muted">Registered residents</p></div>
-  <div class="card"><h2>Manage Requests</h2><p class="muted">Review, verify and update request statuses.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
-  <div class="card"><h2>Document Types</h2><p class="muted">Manage document types and requirements.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
-  <div class="card"><h2>Reports</h2><p class="muted">Summary reports per document type and month.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
+  <div class="card"><p class="stat">{{ pending }}</p><p class="muted">Pending requests</p></div>
+  <div class="card"><p class="stat">{{ under_review }}</p><p class="muted">Under review</p></div>
+  <div class="card"><p class="stat">{{ total }}</p><p class="muted">Total requests</p></div>
+  <div class="card"><p class="stat">{{ resident_count }}</p><p class="muted">Registered residents</p></div>
+</div>
+<div class="card" style="overflow-x:auto">
+  <h2>Newest Pending Requests</h2>
+  <table>
+    <tr><th>Reference</th><th>Resident</th><th>Document</th><th></th></tr>
+    {% for r in recent %}<tr><td>{{ r.reference_no }}</td><td>{{ r.resident.get_full_name|default:r.resident.username }}</td><td>{{ r.document_type.name }}</td>
+      <td><a href="{% url 'admin_request_detail' r.pk %}">Review</a></td></tr>
+    {% empty %}<tr><td colspan="4" class="muted">No pending requests.</td></tr>{% endfor %}
+  </table>
 </div>
 {% endblock %}

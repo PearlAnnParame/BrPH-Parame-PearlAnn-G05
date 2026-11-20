@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Review {{ r.reference_no }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Review Request</h1>
+  <p class="muted">Resident: <strong>{{ r.resident.get_full_name|default:r.resident.username }}</strong> &middot; {{ r.resident.email }} &middot; {{ r.resident.contact_number|default:"no contact number" }}</p>
+  {% include "documents/_request_info.html" %}
+  <a class="btn secondary" href="{% url 'admin_request_list' %}">Back to list</a>
+</div>
+<div class="card">
+  <h2>Update Status</h2>
+  {% if form %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% include "documents/_field.html" with field=form.new_status %}
+    {% include "documents/_field.html" with field=form.remarks %}
+    <button class="btn" type="submit">Update status</button>
+  </form>
+  {% else %}<p class="muted">This request is {{ r.get_status_display }}; no further updates are possible.</p>{% endif %}
+</div>
+{% include "documents/_attachments_history.html" %}
+{% endblock %}

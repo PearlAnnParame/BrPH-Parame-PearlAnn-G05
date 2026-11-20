@@ -4,10 +4,21 @@
 <div class="card">
   <h1>Hello, {{ user.first_name|default:user.username }}!</h1>
   <p class="muted">Resident Dashboard <span class="badge">{{ user.get_role_display }}</span></p>
+  <a class="btn" href="{% url 'choose_type' %}">+ Request a document</a>
 </div>
 <div class="grid">
-  <div class="card"><h2>Request a Document</h2><p class="muted">Barangay Clearance, Certificate of Residency, Certificate of Indigency.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
-  <div class="card"><h2>My Requests</h2><p class="muted">Track the status and history of your requests.</p><a class="btn" style="pointer-events:none;opacity:.5">Coming in PD2</a></div>
-  <div class="card"><h2>My Profile</h2><p class="muted">View and update your details.</p><a class="btn" href="{% url 'profile' %}">Open Profile</a></div>
+  <div class="card"><p class="stat">{{ total }}</p><p class="muted">Total requests</p></div>
+  <div class="card"><p class="stat">{{ pending }}</p><p class="muted">Pending</p></div>
+  <div class="card"><p class="stat">{{ ready }}</p><p class="muted">Ready for pickup</p></div>
+</div>
+<div class="card" style="overflow-x:auto">
+  <h2>Recent Requests</h2>
+  <table>
+    <tr><th>Reference</th><th>Document</th><th>Status</th><th></th></tr>
+    {% for r in recent %}<tr><td>{{ r.reference_no }}</td><td>{{ r.document_type.name }}</td>
+      <td><span class="st st-{{ r.status }}">{{ r.get_status_display }}</span></td><td><a href="{% url 'request_detail' r.pk %}">View</a></td></tr>
+    {% empty %}<tr><td colspan="4" class="muted">You have no requests yet.</td></tr>{% endfor %}
+  </table>
+  <p><a href="{% url 'request_list' %}">View all requests</a> &middot; <a href="{% url 'profile' %}">My profile</a></p>
 </div>
 {% endblock %}
