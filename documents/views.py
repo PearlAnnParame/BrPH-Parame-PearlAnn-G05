@@ -153,7 +153,7 @@ def admin_request_list(request):
         )
     if status in Status.values:
         qs = qs.filter(status=status)
-    if type_id.isdigit():
+    if type_id.isascii() and type_id.isdigit() and len(type_id) < 18:
         qs = qs.filter(document_type_id=type_id)
     return render(request, "documents/admin_request_list.html", {
         "page": paginate(request, qs), "q": q, "status": status, "type_id": type_id,
