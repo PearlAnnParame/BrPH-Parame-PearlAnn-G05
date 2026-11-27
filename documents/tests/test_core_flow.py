@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from accounts.models import User
 
-from .models import DocumentRequest, DocumentType, Requirement, StatusHistory
+from documents.models import DocumentRequest, DocumentType, Requirement, StatusHistory
 
 TMP_MEDIA = override_settings(MEDIA_ROOT="/tmp/brph_test_media")
 
