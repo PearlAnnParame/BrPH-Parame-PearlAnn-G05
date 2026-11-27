@@ -1,5 +1,7 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import FileResponse, Http404
 from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -9,7 +11,8 @@ from accounts.models import User
 
 from .forms import (DocumentTypeForm, RequestForm, RequirementFormSet,
                     StatusUpdateForm)
-from .models import DocumentRequest, DocumentType, StatusHistory
+from .models import (DocumentRequest, DocumentType, RequestAttachment,
+                     StatusHistory)
 
 RESIDENT = User.Role.RESIDENT
 ADMIN = User.Role.ADMIN
@@ -113,6 +116,18 @@ def request_delete(request, pk):
     doc_request.delete()
     messages.success(request, f"Request {ref} deleted.")
     return redirect("request_list")
+
+
+@login_required
+def attachment_download(request, pk):
+    """Serve an uploaded file only to its owner (resident) or to a Barangay Admin."""
+    att = get_object_or_404(RequestAttachment.objects.select_related("request"), pk=pk)
+    if request.user.role != ADMIN and att.request.resident_id != request.user.pk:
+        raise Http404("No such file.")
+    try:
+        return FileResponse(att.file.open("rb"), filename=att.file.name.rsplit("/", 1)[-1])
+    except (FileNotFoundError, OSError):
+        raise Http404("File is no longer available.")
 
 
 # ------------------------------------------------------------------- Admin
