@@ -9,7 +9,7 @@
   <p class="muted"><strong>Requirements:</strong>
     {% for req in t.requirements.all %}{{ req.name }}{% if not req.is_mandatory %} (optional){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %}</p>
   <a class="btn" href="{% url 'doctype_edit' t.pk %}">Edit</a>
-  <form method="post" action="{% url 'doctype_delete' t.pk %}" style="display:inline" onsubmit="return confirm('Delete this document type?')">{% csrf_token %}<button class="btn danger" type="submit">Delete</button></form>
+  <a class="btn danger" href="{% url 'doctype_delete_confirm' t.pk %}">Delete</a>
 </div>
 {% empty %}<div class="card"><p class="muted">No document types yet.</p></div>{% endfor %}
 {% endblock %}
