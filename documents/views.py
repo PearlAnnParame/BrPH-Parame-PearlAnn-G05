@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import FileResponse, Http404
+from django.core.paginator import Paginator
 from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -17,6 +18,14 @@ from .models import (DocumentRequest, DocumentType, RequestAttachment,
 RESIDENT = User.Role.RESIDENT
 ADMIN = User.Role.ADMIN
 Status = DocumentRequest.Status
+
+
+PAGE_SIZE = 10
+
+
+def paginate(request, queryset):
+    """Return the requested page; bad or out-of-range ?page= values fall back to a valid page."""
+    return Paginator(queryset, PAGE_SIZE).get_page(request.GET.get("page"))
 
 
 def log_status(doc_request, old, new, user, remarks=""):
@@ -39,7 +48,7 @@ def request_list(request):
     if status in Status.values:
         qs = qs.filter(status=status)
     return render(request, "documents/request_list.html", {
-        "requests": qs, "status": status, "statuses": Status.choices,
+        "page": paginate(request, qs), "status": status, "statuses": Status.choices,
     })
 
 
@@ -147,7 +156,7 @@ def admin_request_list(request):
     if type_id.isdigit():
         qs = qs.filter(document_type_id=type_id)
     return render(request, "documents/admin_request_list.html", {
-        "requests": qs, "q": q, "status": status, "type_id": type_id,
+        "page": paginate(request, qs), "q": q, "status": status, "type_id": type_id,
         "statuses": Status.choices, "types": DocumentType.objects.all(),
     })
 
