@@ -13,20 +13,31 @@
     <h2 style="margin-top:1.5rem">Requirements</h2>
     {{ formset.management_form }}
     {{ formset.non_form_errors }}
-    {% for f in formset %}
-      <div class="card" style="background:#f9fafb">
-        {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
-        {{ f.non_field_errors }}
-        {% for field in f.visible_fields %}
-          {% if field.name == "is_mandatory" %}<label><input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}" {% if field.value %}checked{% endif %}> Mandatory</label>
-          {% elif field.name == "DELETE" %}<label><input type="checkbox" name="{{ field.html_name }}" id="{{ field.id_for_label }}"> Remove this requirement</label>
-          {% else %}{% include "documents/_field.html" with field=field %}{% endif %}
-        {% endfor %}
-      </div>
-    {% endfor %}
-    <p class="muted">Save, then edit again to add more than two new requirements at once.</p>
+    <div id="req-rows">
+    {% for f in formset %}{% include "documents/_req_row.html" %}{% endfor %}
+    </div>
+    <template id="req-empty">{% include "documents/_req_row.html" with f=formset.empty_form %}</template>
+    <button class="btn secondary" type="button" id="add-req">+ Add another requirement</button>
+    <br>
     <button class="btn" type="submit">Save</button>
     <a class="btn secondary" href="{% url 'doctype_list' %}">Cancel</a>
   </form>
 </div>
+
+<script>
+(function () {
+  var total = document.getElementById("id_requirements-TOTAL_FORMS");
+  var rows = document.getElementById("req-rows");
+  var tpl = document.getElementById("req-empty");
+  document.getElementById("add-req").addEventListener("click", function () {
+    var n = parseInt(total.value, 10);
+    var max = parseInt(document.getElementById("id_requirements-MAX_NUM_FORMS").value, 10);
+    if (n >= max) { return; }
+    var holder = document.createElement("div");
+    holder.innerHTML = tpl.innerHTML.replace(/__prefix__/g, n);
+    rows.appendChild(holder.firstElementChild || holder);
+    total.value = n + 1;
+  });
+})();
+</script>
 {% endblock %}
