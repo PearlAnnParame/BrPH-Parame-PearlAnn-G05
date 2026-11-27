@@ -74,5 +74,12 @@
   {% endfor %}
   {% block content %}{% endblock %}
 </main>
+<script>
+// Prevent duplicate submissions: disable submit buttons once a form is sent
+document.addEventListener("submit", function (e) {
+  var btns = e.target.querySelectorAll("button[type=submit]");
+  setTimeout(function () { btns.forEach(function (b) { b.disabled = true; }); }, 0);
+});
+</script>
 </body>
 </html>
