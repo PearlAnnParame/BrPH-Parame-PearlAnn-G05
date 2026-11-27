@@ -14,7 +14,7 @@
     {% if form.file_fields %}<h2 style="margin-top:1.5rem">Required Documents</h2>{% endif %}
     {% for req, field, existing in form.file_fields %}
       {% include "documents/_field.html" with field=field %}
-      {% if existing %}<div class="helptext">Current file: <a href="{{ existing.file.url }}" target="_blank">view</a> (upload a new one to replace it)</div>{% endif %}
+      {% if existing %}<div class="helptext">Current file: <a href="{% url 'attachment_download' existing.pk %}" target="_blank">view</a> (upload a new one to replace it)</div>{% endif %}
     {% endfor %}
     <button class="btn" type="submit">{% if editing %}Save changes{% else %}Submit request{% endif %}</button>
     <a class="btn secondary" href="{% if editing %}{% url 'request_detail' r.pk %}{% else %}{% url 'choose_type' %}{% endif %}">Cancel</a>

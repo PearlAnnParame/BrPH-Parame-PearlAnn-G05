@@ -82,4 +82,32 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# ---- File storage (ISS-01) -------------------------------------------------
+# Default: local media/ folder. Set USE_SUPABASE_STORAGE=True in .env to store uploads in a
+# Supabase Storage bucket (S3-compatible API) so every machine sees the same files.
+def env_bool(name, default=False):
+    return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
+
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+if env_bool("USE_SUPABASE_STORAGE"):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.getenv("SUPABASE_BUCKET", "brph-uploads"),
+            "endpoint_url": os.getenv("SUPABASE_S3_ENDPOINT", ""),
+            "access_key": os.getenv("SUPABASE_S3_ACCESS_KEY", ""),
+            "secret_key": os.getenv("SUPABASE_S3_SECRET_KEY", ""),
+            "region_name": os.getenv("SUPABASE_S3_REGION", "ap-southeast-1"),
+            "signature_version": "s3v4",
+            "addressing_style": "path",
+            "default_acl": None,
+            "querystring_auth": True,   # private bucket: files are only reachable through our views
+            "file_overwrite": False,
+        },
+    }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
