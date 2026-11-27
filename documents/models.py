@@ -10,10 +10,31 @@ def validate_file_size(f):
         raise ValidationError("File is too large. Maximum size is 5 MB.")
 
 
+# File signatures ("magic bytes") so a renamed .exe cannot pass as a .pdf/.jpg/.png
+_SIGNATURES = {
+    "pdf": (b"%PDF-",),
+    "jpg": (b"\xff\xd8\xff",),
+    "jpeg": (b"\xff\xd8\xff",),
+    "png": (b"\x89PNG\r\n\x1a\n",),
+}
+
+
+def validate_file_content(f):
+    ext = f.name.rsplit(".", 1)[-1].lower() if "." in f.name else ""
+    sigs = _SIGNATURES.get(ext)
+    if sigs is None:
+        return  # extension validator reports unsupported types
+    head = f.read(16)
+    f.seek(0)
+    if not any(head.startswith(sig) for sig in sigs):
+        raise ValidationError("The file content does not match its extension. Upload a real PDF, JPG or PNG.")
+
+
 class DocumentType(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
-    fee = models.DecimalField(max_digits=8, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    fee = models.DecimalField(max_digits=8, decimal_places=2, default=0,
+                              validators=[MinValueValidator(0), MaxValueValidator(100000)])
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
