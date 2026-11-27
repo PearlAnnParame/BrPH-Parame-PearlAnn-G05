@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Confirm delete{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ title }}</h1>
+  <p>{{ detail }}</p>
+  <p><strong>This cannot be undone.</strong></p>
+  <form method="post" action="{{ action }}">{% csrf_token %}
+    <button class="btn danger" type="submit">Yes, delete</button>
+    <a class="btn secondary" href="{{ back }}">No, go back</a>
+  </form>
+</div>
+{% endblock %}

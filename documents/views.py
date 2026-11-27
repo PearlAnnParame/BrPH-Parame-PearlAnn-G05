@@ -1,7 +1,11 @@
 from django.contrib import messages
-from django.db import transaction
+from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError, transaction
+from django.http import FileResponse, Http404
+from django.core.paginator import Paginator
 from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required
@@ -9,11 +13,20 @@ from accounts.models import User
 
 from .forms import (DocumentTypeForm, RequestForm, RequirementFormSet,
                     StatusUpdateForm)
-from .models import DocumentRequest, DocumentType, StatusHistory
+from .models import (DocumentRequest, DocumentType, RequestAttachment,
+                     StatusHistory)
 
 RESIDENT = User.Role.RESIDENT
 ADMIN = User.Role.ADMIN
 Status = DocumentRequest.Status
+
+
+PAGE_SIZE = 10
+
+
+def paginate(request, queryset):
+    """Return the requested page; bad or out-of-range ?page= values fall back to a valid page."""
+    return Paginator(queryset, PAGE_SIZE).get_page(request.GET.get("page"))
 
 
 def log_status(doc_request, old, new, user, remarks=""):
@@ -36,7 +49,7 @@ def request_list(request):
     if status in Status.values:
         qs = qs.filter(status=status)
     return render(request, "documents/request_list.html", {
-        "requests": qs, "status": status, "statuses": Status.choices,
+        "page": paginate(request, qs), "status": status, "statuses": Status.choices,
     })
 
 
@@ -47,13 +60,18 @@ def request_create(request, type_id):
                        document_type=doc_type, resident=request.user)
     if request.method == "POST":
         if form.is_valid():
-            with transaction.atomic():
-                doc_request = form.save(commit=False)
-                doc_request.resident = request.user
-                doc_request.document_type = doc_type
-                doc_request.save()
-                form.save_attachments(doc_request)
-                log_status(doc_request, "", Status.PENDING, request.user, "Request submitted.")
+            try:
+                with transaction.atomic():
+                    doc_request = form.save(commit=False)
+                    doc_request.resident = request.user
+                    doc_request.document_type = doc_type
+                    doc_request.save()
+                    form.save_attachments(doc_request)
+                    log_status(doc_request, "", Status.PENDING, request.user, "Request submitted.")
+            except IntegrityError:
+                # Two submissions at once: the database rejected the duplicate active request.
+                messages.error(request, f"You already have an active request for {doc_type.name}.")
+                return redirect("request_list")
             messages.success(request, f"Request {doc_request.reference_no} submitted successfully.")
             return redirect("request_detail", pk=doc_request.pk)
         messages.error(request, "Please correct the errors below.")
@@ -62,7 +80,10 @@ def request_create(request, type_id):
 
 @role_required(RESIDENT)
 def request_detail(request, pk):
-    doc_request = get_object_or_404(DocumentRequest, pk=pk, resident=request.user)  # own records only
+    doc_request = get_object_or_404(
+        DocumentRequest.objects.select_related("document_type").prefetch_related(
+            "attachments__requirement", "history"),
+        pk=pk, resident=request.user)  # own records only
     return render(request, "documents/request_detail.html", {"r": doc_request})
 
 
@@ -91,28 +112,59 @@ def request_edit(request, pk):
 @role_required(RESIDENT)
 @require_POST
 def request_cancel(request, pk):
-    doc_request = get_object_or_404(DocumentRequest, pk=pk, resident=request.user)
-    if doc_request.status != Status.PENDING:
-        messages.error(request, "Only pending requests can be cancelled.")
-    else:
-        doc_request.status = Status.CANCELLED
-        doc_request.save()
-        log_status(doc_request, Status.PENDING, Status.CANCELLED, request.user, "Cancelled by resident.")
-        messages.success(request, "Request cancelled.")
+    with transaction.atomic():
+        doc_request = get_object_or_404(
+            DocumentRequest.objects.select_for_update(), pk=pk, resident=request.user)
+        if doc_request.status != Status.PENDING:
+            messages.error(request, "Only pending requests can be cancelled.")
+        else:
+            doc_request.status = Status.CANCELLED
+            doc_request.save()
+            log_status(doc_request, Status.PENDING, Status.CANCELLED, request.user, "Cancelled by resident.")
+            messages.success(request, "Request cancelled.")
     return redirect("request_detail", pk=pk)
+
+
+@role_required(RESIDENT)
+def request_delete_confirm(request, pk):
+    """Confirmation page. Shows a form only; nothing is deleted on GET."""
+    doc_request = get_object_or_404(DocumentRequest.objects.select_related("document_type"),
+                                    pk=pk, resident=request.user)
+    if not doc_request.can_be_deleted:
+        messages.error(request, "Only pending or cancelled requests can be deleted.")
+        return redirect("request_detail", pk=pk)
+    return render(request, "documents/confirm_delete.html", {
+        "title": f"Delete request {doc_request.reference_no}?",
+        "detail": f"{doc_request.document_type.name} - this also removes its uploaded files and history.",
+        "action": reverse("request_delete", args=[pk]), "back": reverse("request_detail", args=[pk]),
+    })
 
 
 @role_required(RESIDENT)
 @require_POST
 def request_delete(request, pk):
-    doc_request = get_object_or_404(DocumentRequest, pk=pk, resident=request.user)
-    if not doc_request.can_be_deleted:
-        messages.error(request, "Only pending or cancelled requests can be deleted.")
-        return redirect("request_detail", pk=pk)
-    ref = doc_request.reference_no
-    doc_request.delete()
+    with transaction.atomic():
+        doc_request = get_object_or_404(
+            DocumentRequest.objects.select_for_update(), pk=pk, resident=request.user)
+        if not doc_request.can_be_deleted:
+            messages.error(request, "Only pending or cancelled requests can be deleted.")
+            return redirect("request_detail", pk=pk)
+        ref = doc_request.reference_no
+        doc_request.delete()
     messages.success(request, f"Request {ref} deleted.")
     return redirect("request_list")
+
+
+@login_required
+def attachment_download(request, pk):
+    """Serve an uploaded file only to its owner (resident) or to a Barangay Admin."""
+    att = get_object_or_404(RequestAttachment.objects.select_related("request"), pk=pk)
+    if request.user.role != ADMIN and att.request.resident_id != request.user.pk:
+        raise Http404("No such file.")
+    try:
+        return FileResponse(att.file.open("rb"), filename=att.file.name.rsplit("/", 1)[-1])
+    except (FileNotFoundError, OSError):
+        raise Http404("File is no longer available.")
 
 
 # ------------------------------------------------------------------- Admin
@@ -129,32 +181,40 @@ def admin_request_list(request):
         )
     if status in Status.values:
         qs = qs.filter(status=status)
-    if type_id.isdigit():
+    if type_id.isascii() and type_id.isdigit() and len(type_id) < 18:
         qs = qs.filter(document_type_id=type_id)
     return render(request, "documents/admin_request_list.html", {
-        "requests": qs, "q": q, "status": status, "type_id": type_id,
+        "page": paginate(request, qs), "q": q, "status": status, "type_id": type_id,
         "statuses": Status.choices, "types": DocumentType.objects.all(),
     })
 
 
 @role_required(ADMIN)
 def admin_request_detail(request, pk):
-    doc_request = get_object_or_404(DocumentRequest.objects.select_related("resident", "document_type"), pk=pk)
+    doc_request = get_object_or_404(
+        DocumentRequest.objects.select_related("resident", "document_type", "processed_by")
+        .prefetch_related("attachments__requirement", "history__changed_by"), pk=pk)
     form = None
     if doc_request.next_statuses:
         form = StatusUpdateForm(request.POST or None, doc_request=doc_request)
         if request.method == "POST":
             if form.is_valid():
-                old = doc_request.status
-                new = form.cleaned_data["new_status"]
-                remarks = form.cleaned_data["remarks"].strip()
-                doc_request.status = new
-                doc_request.processed_by = request.user
-                if remarks:
-                    doc_request.admin_remarks = remarks
-                doc_request.save()
-                log_status(doc_request, old, new, request.user, remarks)
-                messages.success(request, f"Status updated to {doc_request.get_status_display()}.")
+                with transaction.atomic():
+                    # Lock the row and re-check the status so two admins cannot apply conflicting updates
+                    locked = DocumentRequest.objects.select_for_update().get(pk=pk)
+                    new = form.cleaned_data["new_status"]
+                    if new not in locked.next_statuses:
+                        messages.error(request, "This request was changed by someone else. Review it again.")
+                        return redirect("admin_request_detail", pk=pk)
+                    old = locked.status
+                    remarks = form.cleaned_data["remarks"].strip()
+                    locked.status = new
+                    locked.processed_by = request.user
+                    if remarks:
+                        locked.admin_remarks = remarks
+                    locked.save()
+                    log_status(locked, old, new, request.user, remarks)
+                messages.success(request, f"Status updated to {locked.get_status_display()}.")
                 return redirect("admin_request_detail", pk=pk)
             messages.error(request, "Please correct the errors below.")
     return render(request, "documents/admin_request_detail.html", {"r": doc_request, "form": form})
@@ -185,11 +245,23 @@ def doctype_form(request, pk=None):
 
 
 @role_required(ADMIN)
+def doctype_delete_confirm(request, pk):
+    """Confirmation page. Shows a form only; nothing is deleted on GET."""
+    obj = get_object_or_404(DocumentType, pk=pk)
+    return render(request, "documents/confirm_delete.html", {
+        "title": f"Delete document type '{obj.name}'?",
+        "detail": "Its requirements are removed too. Types that already have requests cannot be deleted.",
+        "action": reverse("doctype_delete", args=[pk]), "back": reverse("doctype_list"),
+    })
+
+
+@role_required(ADMIN)
 @require_POST
 def doctype_delete(request, pk):
     obj = get_object_or_404(DocumentType, pk=pk)
     try:
-        obj.delete()
+        with transaction.atomic():
+            obj.delete()
         messages.success(request, f"Document type '{obj.name}' deleted.")
     except ProtectedError:
         messages.error(request, "This document type has existing requests. Mark it inactive instead of deleting.")

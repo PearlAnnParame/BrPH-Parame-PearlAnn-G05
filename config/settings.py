@@ -2,14 +2,21 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env", override=True)
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me")
-DEBUG = os.getenv("DEBUG", "True") == "True"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+def env_bool(name, default=False):
+    return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
+
+
+# Secrets and switches come from .env (never committed). DEBUG is OFF unless .env turns it on.
+DEBUG = env_bool("DEBUG", False)
+# No hard-coded fallback secret: without SECRET_KEY in .env a random one is generated per run.
+SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_key()
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -69,6 +76,20 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# ---- Security hardening ------------------------------------------------------
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+X_FRAME_OPTIONS = "DENY"
+# HTTPS-only cookies in production (DEBUG off); override with SECURE_COOKIES in .env
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = env_bool("SECURE_COOKIES", not DEBUG)
+FILE_UPLOAD_PERMISSIONS = 0o640
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
+
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"
@@ -82,4 +103,28 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# ---- File storage (ISS-01) -------------------------------------------------
+# Default: local media/ folder. Set USE_SUPABASE_STORAGE=True in .env to store uploads in a
+# Supabase Storage bucket (S3-compatible API) so every machine sees the same files.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+if env_bool("USE_SUPABASE_STORAGE"):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.getenv("SUPABASE_BUCKET", "brph-uploads"),
+            "endpoint_url": os.getenv("SUPABASE_S3_ENDPOINT", ""),
+            "access_key": os.getenv("SUPABASE_S3_ACCESS_KEY", ""),
+            "secret_key": os.getenv("SUPABASE_S3_SECRET_KEY", ""),
+            "region_name": os.getenv("SUPABASE_S3_REGION", "ap-southeast-1"),
+            "signature_version": "s3v4",
+            "addressing_style": "path",
+            "default_acl": None,
+            "querystring_auth": True,   # private bucket: files are only reachable through our views
+            "file_overwrite": False,
+        },
+    }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
