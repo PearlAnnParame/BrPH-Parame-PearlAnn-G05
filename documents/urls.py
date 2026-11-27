@@ -11,6 +11,7 @@ urlpatterns = [
     path("requests/<int:pk>/edit/", views.request_edit, name="request_edit"),
     path("requests/<int:pk>/cancel/", views.request_cancel, name="request_cancel"),
     path("requests/<int:pk>/delete/", views.request_delete, name="request_delete"),
+    path("files/<int:pk>/", views.attachment_download, name="attachment_download"),
     # Admin
     path("manage/requests/", views.admin_request_list, name="admin_request_list"),
     path("manage/requests/<int:pk>/", views.admin_request_detail, name="admin_request_detail"),
