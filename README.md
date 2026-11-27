@@ -44,7 +44,7 @@ python manage.py runserver
 
 ### Run the automated tests
 ```bash
-python manage.py test                 # all tests (46)
+python manage.py test                 # all tests (47)
 python manage.py test documents       # core feature only
 python manage.py test accounts        # standard features (register, login, dashboard, profile)
 ```
